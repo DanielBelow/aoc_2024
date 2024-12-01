@@ -21,13 +21,10 @@ pub fn generate(s: &str) -> Option<(Vec<usize>, Vec<usize>)> {
 
 #[aoc(day01, part1)]
 pub fn part1((left, right): &(Vec<usize>, Vec<usize>)) -> usize {
-    let mut left = left.clone();
-    let mut right = right.clone();
-
-    left.sort_unstable();
-    right.sort_unstable();
-
-    left.iter().zip(right).map(|(l, r)| l.abs_diff(r)).sum()
+    left.iter()
+        .sorted()
+        .zip(right.iter().sorted())
+        .fold(0usize, |acc, (l, r)| acc + l.abs_diff(*r))
 }
 
 #[aoc(day01, part2)]
