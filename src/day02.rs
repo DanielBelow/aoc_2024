@@ -2,6 +2,7 @@ use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
 use std::iter::Iterator;
 
+#[derive(Clone, Debug)]
 pub struct Input {
     levels: Vec<usize>,
 }
@@ -22,23 +23,17 @@ pub fn generate(s: &str) -> Vec<Input> {
 }
 
 impl Input {
-    fn all_increasing(&self) -> bool {
-        self.levels.windows(2).all(|it| it[0] < it[1])
-    }
-
-    fn all_decreasing(&self) -> bool {
-        self.levels.windows(2).all(|it| it[0] > it[1])
-    }
-
-    fn adjacent_diff(&self) -> bool {
-        self.levels.windows(2).all(|it| {
-            let diff = it[0].abs_diff(it[1]);
-            (1..=3).contains(&diff)
-        })
+    #[allow(clippy::cast_possible_wrap)]
+    fn pairwise_diff(&self) -> Vec<isize> {
+        self.levels
+            .windows(2)
+            .map(|it| it[0] as isize - it[1] as isize)
+            .collect()
     }
 
     fn is_safe(&self) -> bool {
-        (self.all_increasing() || self.all_decreasing()) && self.adjacent_diff()
+        let diff = self.pairwise_diff();
+        diff.iter().all(|it| (1..=3).contains(it)) || diff.iter().all(|it| (-3..=-1).contains(it))
     }
 
     fn safe_with_removing(&self) -> bool {
@@ -46,18 +41,11 @@ impl Input {
             return true;
         }
 
-        for i in 0..self.levels.len() {
-            let mut lvls = self.levels.clone();
-            lvls.remove(i);
-
-            let new_inp = Self { levels: lvls };
-
-            if new_inp.is_safe() {
-                return true;
-            }
-        }
-
-        false
+        (0..self.levels.len()).any(|i| {
+            let mut new_inp = self.clone();
+            new_inp.levels.remove(i);
+            new_inp.is_safe()
+        })
     }
 }
 
