@@ -1,13 +1,20 @@
 use aoc_runner_derive::aoc;
+use lazy_static::lazy_static;
 use regex::Regex;
+
+lazy_static! {
+    static ref REGEX_MUL: Regex =
+        Regex::new(r"mul\((\d{1,3}),\s*(\d{1,3})\)").expect("valid regex");
+    static ref REGEX_MUL_KEYWORDS: Regex =
+        Regex::new(r"mul\((\d{1,3}),(\d{1,3})\)|do\(\)|don't\(\)").expect("valid regex");
+}
 
 #[aoc(day03, part1)]
 pub fn part1(inp: &str) -> usize {
-    let re = Regex::new(r"mul\((\d{1,3}),\s*(\d{1,3})\)").expect("valid regex");
     let mut result = 0;
 
     for line in inp.lines() {
-        for capt in re.captures_iter(line) {
+        for capt in REGEX_MUL.captures_iter(line) {
             let a = capt[1].parse::<usize>().expect("valid number");
             let b = capt[2].parse::<usize>().expect("valid number");
 
@@ -22,11 +29,9 @@ pub fn part1(inp: &str) -> usize {
 pub fn part2(inp: &str) -> usize {
     let mut result = 0;
 
-    let re = Regex::new(r"mul\((\d{1,3}),(\d{1,3})\)|do\(\)|don't\(\)").expect("valid regex");
-
     let all = inp
         .lines()
-        .flat_map(|l| re.find_iter(l))
+        .flat_map(|l| REGEX_MUL_KEYWORDS.find_iter(l))
         .map(|m| m.as_str());
 
     let mut ignore = false;
