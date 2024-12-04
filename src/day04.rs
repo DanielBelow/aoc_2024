@@ -53,13 +53,13 @@ pub fn part2(inp: &Matrix<char>) -> usize {
     let mut result = 0;
 
     for (r, c) in
-        iproduct!(0..inp.rows - 2, 0..inp.columns - 2).filter(|&(x, y)| inp[(x + 1, y + 1)] == 'A')
+        iproduct!(1..inp.rows - 1, 1..inp.columns - 1).filter(|&(x, y)| inp[(x, y)] == 'A')
     {
-        let diag_ok = (inp[(r, c)] == 'M' && inp[(r + 2, c + 2)] == 'S')
-            || (inp[(r, c)] == 'S' && inp[(r + 2, c + 2)] == 'M');
+        let diag_ok = (inp[(r - 1, c - 1)] == 'M' && inp[(r + 1, c + 1)] == 'S')
+            || (inp[(r - 1, c - 1)] == 'S' && inp[(r + 1, c + 1)] == 'M');
 
-        let anti_diag_ok = (inp[(r, c + 2)] == 'M' && inp[(r + 2, c)] == 'S')
-            || (inp[(r, c + 2)] == 'S' && inp[(r + 2, c)] == 'M');
+        let anti_diag_ok = (inp[(r - 1, c + 1)] == 'M' && inp[(r + 1, c - 1)] == 'S')
+            || (inp[(r - 1, c + 1)] == 'S' && inp[(r + 1, c - 1)] == 'M');
 
         result += usize::from(diag_ok && anti_diag_ok);
     }
