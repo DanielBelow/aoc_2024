@@ -1,7 +1,9 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use itertools::{iproduct, Itertools};
+use itertools::{iproduct, EitherOrBoth, Itertools};
 use pathfinding::matrix::Matrix;
 use std::iter::Iterator;
+
+const MAS: [char; 3] = ['M', 'A', 'S'];
 
 #[aoc_generator(day04)]
 pub fn generate(s: &str) -> Option<Matrix<char>> {
@@ -9,21 +11,16 @@ pub fn generate(s: &str) -> Option<Matrix<char>> {
     Matrix::from_rows(v).ok()
 }
 
-fn get_n_chrs_in_dir(
-    matrix: &Matrix<char>,
-    n: usize,
-    (x, y): (usize, usize),
-    (dx, dy): (isize, isize),
-) -> Vec<char> {
+fn check_chars_in_dir(matrix: &Matrix<char>, start: (usize, usize), dir: (isize, isize)) -> bool {
     matrix
-        .in_direction((x, y), (dx, dy))
-        .take(n)
-        .filter_map(|(x, y)| matrix.get((x, y)))
-        .copied()
-        .collect_vec()
+        .in_direction(start, dir)
+        .take(MAS.len())
+        .zip_longest(MAS)
+        .all(|it| match it {
+            EitherOrBoth::Both((r, c), expected) => matrix[(r, c)] == expected,
+            _ => false,
+        })
 }
-
-const MAS: [char; 3] = ['M', 'A', 'S'];
 
 #[aoc(day04, part1)]
 pub fn part1(inp: &Matrix<char>) -> usize {
@@ -40,8 +37,8 @@ pub fn part1(inp: &Matrix<char>) -> usize {
             (-1, 1),
             (-1, -1),
         ] {
-            let n_chrs = get_n_chrs_in_dir(inp, 3, (r, c), (dx, dy));
-            result += usize::from(n_chrs == MAS);
+            let n_chrs = check_chars_in_dir(inp, (r, c), (dx, dy));
+            result += usize::from(n_chrs);
         }
     }
 
@@ -50,21 +47,23 @@ pub fn part1(inp: &Matrix<char>) -> usize {
 
 #[aoc(day04, part2)]
 pub fn part2(inp: &Matrix<char>) -> usize {
-    let mut result = 0;
+    iproduct!(1..inp.rows - 1, 1..inp.columns - 1)
+        .filter(|&(x, y)| inp[(x, y)] == 'A')
+        .fold(0, |acc, (r, c)| {
+            let top_left = inp[(r - 1, c - 1)];
+            let bot_right = inp[(r + 1, c + 1)];
 
-    for (r, c) in
-        iproduct!(1..inp.rows - 1, 1..inp.columns - 1).filter(|&(x, y)| inp[(x, y)] == 'A')
-    {
-        let diag_ok = (inp[(r - 1, c - 1)] == 'M' && inp[(r + 1, c + 1)] == 'S')
-            || (inp[(r - 1, c - 1)] == 'S' && inp[(r + 1, c + 1)] == 'M');
+            let top_right = inp[(r - 1, c + 1)];
+            let bot_left = inp[(r + 1, c - 1)];
 
-        let anti_diag_ok = (inp[(r - 1, c + 1)] == 'M' && inp[(r + 1, c - 1)] == 'S')
-            || (inp[(r - 1, c + 1)] == 'S' && inp[(r + 1, c - 1)] == 'M');
+            let diag_ok =
+                (top_left == 'M' && bot_right == 'S') || (top_left == 'S' && bot_right == 'M');
 
-        result += usize::from(diag_ok && anti_diag_ok);
-    }
+            let anti_diag_ok =
+                (top_right == 'M' && bot_left == 'S') || (top_right == 'S' && bot_left == 'M');
 
-    result
+            acc + usize::from(diag_ok && anti_diag_ok)
+        })
 }
 
 #[cfg(test)]
