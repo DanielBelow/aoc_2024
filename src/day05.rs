@@ -1,6 +1,18 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
 use pathfinding::prelude::topological_sort;
+use std::collections::HashMap;
+
+trait OrderedUpdate {
+    fn get_middle_number(&self) -> usize;
+}
+
+impl OrderedUpdate for Vec<usize> {
+    fn get_middle_number(&self) -> usize {
+        let len = self.len();
+        self[(len - 1) / 2]
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub struct PageOrderRule {
@@ -11,45 +23,26 @@ pub struct PageOrderRule {
 #[derive(Clone, Debug)]
 pub struct Update {
     numbers: Vec<usize>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ParsedInput {
-    order_rules: Vec<PageOrderRule>,
-    updates: Vec<Update>,
+    applicable_rules: HashMap<usize, Vec<usize>>,
 }
 
 impl Update {
-    fn topological_sort(&self, order_rules: &[PageOrderRule]) -> Self {
-        let grouping_map = order_rules
-            .iter()
-            .filter(|r| self.numbers.contains(&r.lhs) && self.numbers.contains(&r.rhs))
-            .map(|r| (r.lhs, r.rhs))
-            .into_grouping_map()
-            .collect();
-
-        let numbers = topological_sort(&self.numbers, |node: &usize| {
-            grouping_map
+    fn topological_sort(&self) -> Vec<usize> {
+        topological_sort(&self.numbers, |node: &usize| {
+            self.applicable_rules
                 .get(node)
                 .map_or_else(Vec::new, std::clone::Clone::clone)
         })
-        .expect("valid topo sort exists");
-
-        Self { numbers }
+        .expect("valid topo sort exists")
     }
 
-    fn is_valid(&self, order_rules: &[PageOrderRule]) -> bool {
-        self.topological_sort(order_rules).numbers == self.numbers
-    }
-
-    fn get_middle_number(&self) -> usize {
-        let len = self.numbers.len();
-        self.numbers[(len - 1) / 2]
+    fn is_valid(&self) -> bool {
+        self.topological_sort() == self.numbers
     }
 }
 
 #[aoc_generator(day05)]
-pub fn generate(s: &str) -> ParsedInput {
+pub fn generate(s: &str) -> Vec<Update> {
     let spl = s.split("\n\n").collect_vec();
 
     let mut order_rules = vec![];
@@ -69,21 +62,27 @@ pub fn generate(s: &str) -> ParsedInput {
                 .map(|s| s.parse::<usize>().expect("update_number"))
                 .collect_vec();
 
-            Update { numbers }
+            let applicable_rules = order_rules
+                .iter()
+                .filter(|r| numbers.contains(&r.lhs) && numbers.contains(&r.rhs))
+                .map(|r| (r.lhs, r.rhs))
+                .into_group_map();
+
+            Update {
+                numbers,
+                applicable_rules,
+            }
         })
         .collect_vec();
 
-    ParsedInput {
-        order_rules,
-        updates,
-    }
+    updates
 }
 
 #[aoc(day05, part1)]
-pub fn part1(inp: &ParsedInput) -> usize {
-    inp.updates.iter().fold(0, |acc, it| {
-        acc + if it.is_valid(&inp.order_rules) {
-            it.get_middle_number()
+pub fn part1(inp: &[Update]) -> usize {
+    inp.iter().fold(0, |acc, it| {
+        acc + if it.is_valid() {
+            it.numbers.get_middle_number()
         } else {
             0
         }
@@ -91,13 +90,15 @@ pub fn part1(inp: &ParsedInput) -> usize {
 }
 
 #[aoc(day05, part2)]
-pub fn part2(inp: &ParsedInput) -> usize {
-    inp.updates
-        .iter()
-        .filter(|u| !u.is_valid(&inp.order_rules))
-        .fold(0, |acc, it| {
-            acc + it.topological_sort(&inp.order_rules).get_middle_number()
-        })
+pub fn part2(inp: &[Update]) -> usize {
+    inp.iter().fold(0, |acc, it| {
+        let topo_sort = it.topological_sort();
+        acc + if topo_sort == it.numbers {
+            0 // ignore, was already valid
+        } else {
+            topo_sort.get_middle_number()
+        }
+    })
 }
 
 #[cfg(test)]
