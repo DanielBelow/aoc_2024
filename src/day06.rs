@@ -31,13 +31,13 @@ pub fn generate(s: &str) -> Option<Matrix<char>> {
     Matrix::from_rows(v).ok()
 }
 
-fn walk_path(guard: &mut Guard, grid: &Matrix<char>) -> Vec<Guard> {
-    let mut seen = vec![*guard];
+fn walk_path(mut guard: Guard, grid: &Matrix<char>) -> Vec<Guard> {
+    let mut seen = vec![guard];
 
     while let Some(c) = grid.get(guard.next_coord()) {
         if *c == '.' {
             guard.move_forward();
-            seen.push(*guard);
+            seen.push(guard);
             continue;
         }
 
@@ -61,12 +61,12 @@ pub fn part1(inp: &Matrix<char>) -> usize {
 
     grid[(start_row, start_col)] = '.';
 
-    let mut guard = Guard {
+    let guard = Guard {
         pos: Complex::new(start_row as i64, start_col as i64),
         direction: Complex::new(-1, 0),
     };
 
-    let path = walk_path(&mut guard, &grid);
+    let path = walk_path(guard, &grid);
     path.iter().map(|g| g.pos).unique().count()
 }
 
@@ -82,25 +82,33 @@ pub fn part2(inp: &Matrix<char>) -> usize {
 
     grid[(start_row, start_col)] = '.';
 
-    let mut loops = HashSet::new();
+    let mut num_loops = 0;
+
+    let start_guard = Guard {
+        pos: Complex::new(start_row as i64, start_col as i64),
+        direction: Complex::new(-1, 0),
+    };
+
+    let real_path = walk_path(start_guard, &grid)
+        .iter()
+        .map(|g| (g.pos.re as usize, g.pos.im as usize))
+        .unique()
+        .collect_vec();
 
     for (r, c) in iproduct!(0..inp.rows, 0..inp.columns) {
-        if grid[(r, c)] == '#' || (start_row == r && start_col == c) {
+        if grid[(r, c)] == '#' || !real_path.contains(&(r, c)) || (r == start_row && c == start_col)
+        {
             continue;
         }
 
-        let mut cur_inp = grid.clone();
-        cur_inp[(r, c)] = '#';
+        grid[(r, c)] = '#';
 
-        let mut guard = Guard {
-            pos: Complex::new(start_row as i64, start_col as i64),
-            direction: Complex::new(-1, 0),
-        };
+        let mut guard = start_guard;
 
-        let mut seen: HashSet<Guard> = HashSet::new();
-        while let Some(chr) = cur_inp.get(guard.next_coord()) {
+        let mut seen = HashSet::new();
+        while let Some(chr) = grid.get(guard.next_coord()) {
             if !seen.insert(guard) {
-                loops.insert((r, c));
+                num_loops += 1;
                 break;
             }
 
@@ -110,9 +118,11 @@ pub fn part2(inp: &Matrix<char>) -> usize {
                 _ => {}
             };
         }
+
+        grid[(r, c)] = '.';
     }
 
-    loops.len()
+    num_loops
 }
 
 #[cfg(test)]
