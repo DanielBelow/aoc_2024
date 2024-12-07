@@ -14,41 +14,40 @@ pub enum Operator {
     Concat,
 }
 
-impl Equation {
-    const fn concat_numbers(lhs: i64, rhs: i64) -> i64 {
-        lhs * 10i64.pow(rhs.ilog10() + 1) + rhs
-    }
+const fn concat_numbers(lhs: i64, rhs: i64) -> i64 {
+    lhs * 10i64.pow(rhs.ilog10() + 1) + rhs
+}
 
-    fn can_solve_impl(
-        target: i64,
-        current: i64,
-        operands: &[i64],
-        available_ops: &[Operator],
-    ) -> bool {
+impl Operator {
+    const fn execute(self, lhs: i64, rhs: i64) -> i64 {
+        match self {
+            Self::Plus => lhs + rhs,
+            Self::Mul => lhs * rhs,
+            Self::Concat => concat_numbers(lhs, rhs),
+        }
+    }
+}
+
+impl Equation {
+    fn can_solve_impl(&self, current: i64, operands: &[i64], available_ops: &[Operator]) -> bool {
         if operands.is_empty() {
-            return target == current;
+            return self.target == current;
         }
 
-        if current > target {
+        if current > self.target {
             return false;
         }
 
+        let (next_op, rest) = operands.split_first().expect("non-empty operands");
         available_ops.iter().any(|op| {
-            let next_op = operands[0];
-
-            let next = match *op {
-                Operator::Plus => current + next_op,
-                Operator::Mul => current * next_op,
-                Operator::Concat => Self::concat_numbers(current, next_op),
-            };
-
-            Self::can_solve_impl(target, next, &operands[1..], available_ops)
+            let next = op.execute(current, *next_op);
+            self.can_solve_impl(next, rest, available_ops)
         })
     }
 
     fn can_solve(&self, available_ops: &[Operator]) -> bool {
         let operands = self.numbers.clone();
-        Self::can_solve_impl(self.target, 0, &operands, available_ops)
+        self.can_solve_impl(0, &operands, available_ops)
     }
 }
 
