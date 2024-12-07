@@ -15,6 +15,10 @@ pub enum Operator {
 }
 
 impl Equation {
+    const fn concat_numbers(lhs: i64, rhs: i64) -> i64 {
+        lhs * 10i64.pow(rhs.ilog10() + 1) + rhs
+    }
+
     fn can_solve(&self, ops: &[Operator], available_ops: &[Operator]) -> bool {
         let req_ops = self.numbers.len() - 1;
         if ops.len() != req_ops {
@@ -40,7 +44,7 @@ impl Equation {
             match op {
                 Operator::Plus => res += n,
                 Operator::Mul => res *= n,
-                Operator::Concat => res = format!("{res}{n}").parse::<i64>().expect("concat"),
+                Operator::Concat => res = Self::concat_numbers(res, n),
             };
         }
 
@@ -75,28 +79,18 @@ pub fn generate(s: &str) -> Vec<Equation> {
 
 #[aoc(day07, part1)]
 pub fn part1(inp: &[Equation]) -> i64 {
-    let mut result = 0;
-
-    for eq in inp {
-        if eq.can_solve(&[], &[Operator::Plus, Operator::Mul]) {
-            result += eq.target;
-        }
-    }
-
-    result
+    inp.iter().fold(0, |acc, eq| {
+        let can_solve = eq.can_solve(&[], &[Operator::Plus, Operator::Mul]);
+        acc + if can_solve { eq.target } else { 0 }
+    })
 }
 
 #[aoc(day07, part2)]
 pub fn part2(inp: &[Equation]) -> i64 {
-    let mut result = 0;
-
-    for eq in inp {
-        if eq.can_solve(&[], &[Operator::Plus, Operator::Mul, Operator::Concat]) {
-            result += eq.target;
-        }
-    }
-
-    result
+    inp.iter().fold(0, |acc, eq| {
+        let can_solve = eq.can_solve(&[], &[Operator::Plus, Operator::Mul, Operator::Concat]);
+        acc + if can_solve { eq.target } else { 0 }
+    })
 }
 
 #[cfg(test)]
