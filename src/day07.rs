@@ -19,36 +19,36 @@ impl Equation {
         lhs * 10i64.pow(rhs.ilog10() + 1) + rhs
     }
 
-    fn can_solve(&self, ops: &[Operator], available_ops: &[Operator]) -> bool {
-        let req_ops = self.numbers.len() - 1;
-        if ops.len() != req_ops {
-            for &op in available_ops {
-                let mut new_ops = ops.to_vec();
-                new_ops.push(op);
-                if self.can_solve(&new_ops, available_ops) {
-                    return true;
-                }
-            }
+    fn can_solve_impl(
+        target: i64,
+        current: i64,
+        operands: &[i64],
+        available_ops: &[Operator],
+    ) -> bool {
+        if operands.is_empty() {
+            return target == current;
+        }
 
+        if current > target {
             return false;
         }
 
-        let mut res = self.numbers[0];
-        for idx in 1..self.numbers.len() {
-            if res > self.target {
-                return false;
-            }
+        available_ops.iter().any(|op| {
+            let next_op = operands[0];
 
-            let op = ops[idx - 1];
-            let n = self.numbers[idx];
-            match op {
-                Operator::Plus => res += n,
-                Operator::Mul => res *= n,
-                Operator::Concat => res = Self::concat_numbers(res, n),
+            let next = match *op {
+                Operator::Plus => current + next_op,
+                Operator::Mul => current * next_op,
+                Operator::Concat => Self::concat_numbers(current, next_op),
             };
-        }
 
-        res == self.target
+            Self::can_solve_impl(target, next, &operands[1..], available_ops)
+        })
+    }
+
+    fn can_solve(&self, available_ops: &[Operator]) -> bool {
+        let operands = self.numbers.clone();
+        Self::can_solve_impl(self.target, 0, &operands, available_ops)
     }
 }
 
@@ -80,7 +80,7 @@ pub fn generate(s: &str) -> Vec<Equation> {
 #[aoc(day07, part1)]
 pub fn part1(inp: &[Equation]) -> i64 {
     inp.iter().fold(0, |acc, eq| {
-        let can_solve = eq.can_solve(&[], &[Operator::Plus, Operator::Mul]);
+        let can_solve = eq.can_solve(&[Operator::Plus, Operator::Mul]);
         acc + if can_solve { eq.target } else { 0 }
     })
 }
@@ -88,7 +88,7 @@ pub fn part1(inp: &[Equation]) -> i64 {
 #[aoc(day07, part2)]
 pub fn part2(inp: &[Equation]) -> i64 {
     inp.iter().fold(0, |acc, eq| {
-        let can_solve = eq.can_solve(&[], &[Operator::Plus, Operator::Mul, Operator::Concat]);
+        let can_solve = eq.can_solve(&[Operator::Plus, Operator::Mul, Operator::Concat]);
         acc + if can_solve { eq.target } else { 0 }
     })
 }
