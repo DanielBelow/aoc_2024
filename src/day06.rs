@@ -31,13 +31,14 @@ pub fn generate(s: &str) -> Option<Matrix<char>> {
     Matrix::from_rows(v).ok()
 }
 
-fn walk_path(mut guard: Guard, grid: &Matrix<char>) -> Vec<Guard> {
-    let mut seen = vec![guard];
+fn walk_path(mut guard: Guard, grid: &Matrix<char>) -> Matrix<bool> {
+    let mut seen = Matrix::new(grid.rows, grid.columns, false);
+    seen[(guard.pos.re as usize, guard.pos.im as usize)] = true;
 
     while let Some(c) = grid.get(guard.next_coord()) {
         if *c == '.' {
             guard.move_forward();
-            seen.push(guard);
+            seen[(guard.pos.re as usize, guard.pos.im as usize)] = true;
             continue;
         }
 
@@ -67,7 +68,7 @@ pub fn part1(inp: &Matrix<char>) -> usize {
     };
 
     let path = walk_path(guard, &grid);
-    path.iter().map(|g| g.pos).unique().count()
+    path.values().filter(|&v| *v).count()
 }
 
 #[aoc(day06, part2)]
@@ -89,14 +90,10 @@ pub fn part2(inp: &Matrix<char>) -> usize {
         direction: Complex::new(-1, 0),
     };
 
-    let real_path = walk_path(start_guard, &grid)
-        .iter()
-        .map(|g| (g.pos.re as usize, g.pos.im as usize))
-        .unique()
-        .collect_vec();
+    let real_path = walk_path(start_guard, &grid);
 
     for (r, c) in iproduct!(0..inp.rows, 0..inp.columns) {
-        if grid[(r, c)] == '#' || !real_path.contains(&(r, c)) || (r == start_row && c == start_col)
+        if grid[(r, c)] == '#' || !real_path[(r, c)] || (r == start_row && c == start_col)
         {
             continue;
         }
