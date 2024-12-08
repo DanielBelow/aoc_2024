@@ -93,8 +93,7 @@ pub fn part2(inp: &Matrix<char>) -> usize {
     let real_path = walk_path(start_guard, &grid);
 
     for (r, c) in iproduct!(0..inp.rows, 0..inp.columns) {
-        if grid[(r, c)] == '#' || !real_path[(r, c)] || (r == start_row && c == start_col)
-        {
+        if grid[(r, c)] == '#' || !real_path[(r, c)] || (r == start_row && c == start_col) {
             continue;
         }
 
