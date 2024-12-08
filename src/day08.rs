@@ -3,44 +3,46 @@ use itertools::Itertools;
 use pathfinding::prelude::Matrix;
 use std::collections::HashMap;
 
-fn get_node_coord_mapping(matrix: &Matrix<char>) -> HashMap<char, Vec<(usize, usize)>> {
-    matrix
-        .keys()
-        .filter(|&pos| matrix[pos] != '.')
-        .map(|pos| (matrix[pos], pos))
-        .into_group_map()
+pub struct Input {
+    grid: Matrix<char>,
+    coord_mapping: HashMap<char, Vec<(usize, usize)>>,
 }
 
 #[aoc_generator(day08)]
-pub fn generate(s: &str) -> Option<Matrix<char>> {
+pub fn generate(s: &str) -> Option<Input> {
     let v = s.lines().map(|l| l.chars().collect_vec()).collect_vec();
-    Matrix::from_rows(v).ok()
+    let grid = Matrix::from_rows(v).ok()?;
+    let coord_mapping = grid
+        .keys()
+        .filter(|&pos| grid[pos] != '.')
+        .map(|pos| (grid[pos], pos))
+        .into_group_map();
+
+    Some(Input {
+        grid,
+        coord_mapping,
+    })
 }
 
 #[aoc(day08, part1)]
-#[allow(clippy::cast_possible_wrap)]
-pub fn part1(inp: &Matrix<char>) -> usize {
-    let mut anti_nodes = Matrix::new(inp.rows, inp.columns, false);
+pub fn part1(inp: &Input) -> usize {
+    let mut anti_nodes = Matrix::new(inp.grid.rows, inp.grid.columns, false);
 
-    for (_, pos) in get_node_coord_mapping(inp) {
-        for pair in pos.iter().combinations(2) {
-            assert_eq!(pair.len(), 2);
+    for pos in inp.coord_mapping.values() {
+        for &(sr, sc) in pos {
+            for &(tr, tc) in pos {
+                if sr == tr && sc == tc {
+                    continue;
+                }
 
-            let (sr, sc) = *pair[0];
-            let (tr, tc) = *pair[1];
+                if let Some(n) = anti_nodes.get_mut((2 * sr - tr, 2 * sc - tc)) {
+                    *n = true;
+                }
 
-            let row_dist = sr as isize - tr as isize;
-            let col_dist = sc as isize - tc as isize;
-
-            anti_nodes
-                .in_direction((sr, sc), (row_dist, col_dist))
-                .take(1)
-                .for_each(|pos| anti_nodes[pos] = true);
-
-            anti_nodes
-                .in_direction((tr, tc), (-row_dist, -col_dist))
-                .take(1)
-                .for_each(|pos| anti_nodes[pos] = true);
+                if let Some(n) = anti_nodes.get_mut((2 * tr - sr, 2 * tc - sc)) {
+                    *n = true;
+                }
+            }
         }
     }
 
@@ -49,29 +51,30 @@ pub fn part1(inp: &Matrix<char>) -> usize {
 
 #[aoc(day08, part2)]
 #[allow(clippy::cast_possible_wrap)]
-pub fn part2(inp: &Matrix<char>) -> usize {
-    let mut anti_nodes = Matrix::new(inp.rows, inp.columns, false);
+pub fn part2(inp: &Input) -> usize {
+    let mut anti_nodes = Matrix::new(inp.grid.rows, inp.grid.columns, false);
 
-    for (_, pos) in get_node_coord_mapping(inp) {
-        for pair in pos.iter().combinations(2) {
-            assert_eq!(pair.len(), 2);
+    for pos in inp.coord_mapping.values() {
+        for &(sr, sc) in pos {
+            for &(tr, tc) in pos {
+                if sr == tr && sc == tc {
+                    continue;
+                }
 
-            let (sr, sc) = *pair[0];
-            let (tr, tc) = *pair[1];
+                anti_nodes[(sr, sc)] = true;
+                anti_nodes[(tr, tc)] = true;
 
-            anti_nodes[(sr, sc)] = true;
-            anti_nodes[(tr, tc)] = true;
+                let row_dist = sr as isize - tr as isize;
+                let col_dist = sc as isize - tc as isize;
 
-            let row_dist = sr as isize - tr as isize;
-            let col_dist = sc as isize - tc as isize;
+                anti_nodes
+                    .in_direction((sr, sc), (row_dist, col_dist))
+                    .for_each(|pos| anti_nodes[pos] = true);
 
-            anti_nodes
-                .in_direction((sr, sc), (row_dist, col_dist))
-                .for_each(|pos| anti_nodes[pos] = true);
-
-            anti_nodes
-                .in_direction((tr, tc), (-row_dist, -col_dist))
-                .for_each(|pos| anti_nodes[pos] = true);
+                anti_nodes
+                    .in_direction((tr, tc), (-row_dist, -col_dist))
+                    .for_each(|pos| anti_nodes[pos] = true);
+            }
         }
     }
 
