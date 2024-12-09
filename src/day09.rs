@@ -1,14 +1,11 @@
 use aoc_runner_derive::{aoc, aoc_generator};
+use itertools::Itertools;
 
 fn checksum(s: &[Option<usize>]) -> usize {
-    let mut res = 0;
-    for (idx, num) in s.iter().enumerate() {
-        if let Some(num) = num {
-            res += idx * num;
-        }
-    }
-
-    res
+    s.iter()
+        .enumerate()
+        .filter_map(|(idx, num)| num.map(|num| (idx, num)))
+        .fold(0, |acc, (idx, num)| acc + idx * num)
 }
 
 fn reorder_blocks(v: &[Option<usize>]) -> Vec<Option<usize>> {
@@ -60,6 +57,22 @@ fn reorder_whole_file(v: &[Option<usize>]) -> Vec<Option<usize>> {
     res
 }
 
+fn expand_format(s: &str) -> Vec<Option<usize>> {
+    let mut res = vec![];
+
+    for (id, mut chnk) in (&s.chars().chunks(2)).into_iter().enumerate() {
+        if let Some(file) = chnk.next().and_then(|it| it.to_digit(10)) {
+            res.extend_from_slice(&vec![Some(id); file as usize]);
+        }
+
+        if let Some(free) = chnk.next().and_then(|it| it.to_digit(10)) {
+            res.extend_from_slice(&vec![None; free as usize]);
+        }
+    }
+
+    res
+}
+
 #[aoc_generator(day09)]
 pub fn generate(s: &str) -> String {
     s.to_string()
@@ -67,27 +80,7 @@ pub fn generate(s: &str) -> String {
 
 #[aoc(day09, part1)]
 pub fn part1(inp: &str) -> usize {
-    let mut vec = vec![];
-
-    let mut id = 0;
-    let mut is_empty_space = false;
-    for c in inp.chars() {
-        let dgt = c.to_digit(10).expect("digit") as usize;
-
-        if is_empty_space {
-            for _ in 0..dgt {
-                vec.push(None);
-            }
-        } else {
-            for _ in 0..dgt {
-                vec.push(Some(id));
-            }
-            id += 1;
-        }
-
-        is_empty_space = !is_empty_space;
-    }
-
+    let vec = expand_format(inp);
     let res = reorder_blocks(&vec);
 
     checksum(&res)
@@ -95,27 +88,7 @@ pub fn part1(inp: &str) -> usize {
 
 #[aoc(day09, part2)]
 pub fn part2(inp: &str) -> usize {
-    let mut vec = vec![];
-
-    let mut id = 0;
-    let mut is_empty_space = false;
-    for c in inp.chars() {
-        let dgt = c.to_digit(10).expect("digit") as usize;
-
-        if is_empty_space {
-            for _ in 0..dgt {
-                vec.push(None);
-            }
-        } else {
-            for _ in 0..dgt {
-                vec.push(Some(id));
-            }
-            id += 1;
-        }
-
-        is_empty_space = !is_empty_space;
-    }
-
+    let vec = expand_format(inp);
     let res = reorder_whole_file(&vec);
 
     checksum(&res)
