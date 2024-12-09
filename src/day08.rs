@@ -28,6 +28,14 @@ pub fn generate(s: &str) -> Option<Input> {
 pub fn part1(inp: &Input) -> usize {
     let mut anti_nodes = Matrix::new(inp.grid.rows, inp.grid.columns, false);
 
+    let mut check_pos = |(lr, lc): (usize, usize), (rr, rc): (usize, usize)| {
+        if let (Some(new_r), Some(new_c)) = ((2 * lr).checked_sub(rr), (2 * lc).checked_sub(rc)) {
+            if let Some(n) = anti_nodes.get_mut((new_r, new_c)) {
+                *n = true;
+            }
+        }
+    };
+
     for pos in inp.coord_mapping.values() {
         for &(sr, sc) in pos {
             for &(tr, tc) in pos {
@@ -35,13 +43,8 @@ pub fn part1(inp: &Input) -> usize {
                     continue;
                 }
 
-                if let Some(n) = anti_nodes.get_mut((2 * sr - tr, 2 * sc - tc)) {
-                    *n = true;
-                }
-
-                if let Some(n) = anti_nodes.get_mut((2 * tr - sr, 2 * tc - sc)) {
-                    *n = true;
-                }
+                check_pos((sr, sc), (tr, tc));
+                check_pos((tr, tc), (sr, sc));
             }
         }
     }
