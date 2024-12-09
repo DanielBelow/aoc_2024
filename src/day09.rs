@@ -1,5 +1,6 @@
 use aoc_runner_derive::aoc;
 use itertools::Itertools;
+use std::collections::HashMap;
 
 fn checksum(s: &[Option<usize>]) -> usize {
     s.iter()
@@ -11,48 +12,25 @@ fn checksum(s: &[Option<usize>]) -> usize {
 fn reorder_blocks(v: &[Option<usize>]) -> Vec<Option<usize>> {
     let mut res = v.to_vec();
 
-    loop {
-        let last_non_empty = res.iter().rposition(Option::is_some).expect("non empty");
-        let first_empty_idx = res.iter().position(Option::is_none).expect("has empty");
+    let mut last_non_empty = res.iter().rposition(Option::is_some).expect("non empty");
+    let mut first_empty = res.iter().position(Option::is_none).expect("has empty");
 
-        if first_empty_idx > last_non_empty {
+    loop {
+        if first_empty > last_non_empty {
             break;
         }
 
-        res.swap(first_empty_idx, last_non_empty);
-    }
+        res.swap(first_empty, last_non_empty);
 
-    res
-}
+        first_empty += 1;
+        last_non_empty -= 1;
 
-fn reorder_whole_file(v: &[Option<usize>]) -> Vec<Option<usize>> {
-    let mut res = v.to_vec();
+        while res[first_empty].is_some() {
+            first_empty += 1;
+        }
 
-    let highest_id = res
-        .iter()
-        .rfind(|it| it.is_some())
-        .expect("non empty")
-        .expect("digit");
-
-    let counts_map = res.iter().filter_map(|it| *it).counts();
-
-    for id_to_move in (0..=highest_id).rev() {
-        let space_needed = counts_map[&id_to_move];
-
-        let first_id_idx = res
-            .iter()
-            .position(|it| *it == Some(id_to_move))
-            .expect("found");
-
-        let to_find = vec![None; space_needed];
-
-        if let Some(insertion_idx) = res.windows(space_needed).position(|it| it == to_find) {
-            if insertion_idx < first_id_idx {
-                for i in 0..space_needed {
-                    assert_eq!(res[insertion_idx + i], None);
-                    res.swap(insertion_idx + i, first_id_idx + i);
-                }
-            }
+        while res[last_non_empty].is_none() {
+            last_non_empty -= 1;
         }
     }
 
@@ -85,10 +63,44 @@ pub fn part1(inp: &str) -> usize {
 
 #[aoc(day09, part2)]
 pub fn part2(inp: &str) -> usize {
-    let vec = expand_format(inp);
-    let res = reorder_whole_file(&vec);
+    let mut files = HashMap::new();
+    let mut empty_space = Vec::new();
 
-    checksum(&res)
+    let mut idx = 0;
+    for (id, mut chnk) in inp.chars().chunks(2).into_iter().enumerate() {
+        if let Some(file) = chnk.next().and_then(|it| it.to_digit(10)) {
+            files.insert(id, (idx, file));
+            idx += file;
+        }
+
+        if let Some(free) = chnk.next().and_then(|it| it.to_digit(10)) {
+            empty_space.push((idx, free));
+            idx += free;
+        }
+    }
+
+    for id in (1..files.len()).rev() {
+        let (pos, len) = files[&id];
+        if let Some(empty_idx) = empty_space.iter().position(|(_, space)| *space >= len) {
+            let (start, space) = &mut empty_space[empty_idx];
+            if *start >= pos {
+                empty_space = empty_space[..empty_idx].to_vec();
+                continue;
+            }
+
+            files.entry(id).and_modify(|(idx, _)| *idx = *start);
+
+            *start += len;
+            *space -= len;
+            if *space == 0 {
+                empty_space.remove(empty_idx);
+            }
+        }
+    }
+
+    files.iter().fold(0, |acc, (k, &(idx, len))| {
+        (idx..idx + len).fold(acc, |acc, n| acc + k * n as usize)
+    })
 }
 
 #[cfg(test)]
