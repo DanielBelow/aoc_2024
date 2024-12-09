@@ -1,4 +1,4 @@
-use aoc_runner_derive::{aoc, aoc_generator};
+use aoc_runner_derive::aoc;
 use itertools::Itertools;
 
 fn checksum(s: &[Option<usize>]) -> usize {
@@ -34,8 +34,10 @@ fn reorder_whole_file(v: &[Option<usize>]) -> Vec<Option<usize>> {
         .expect("non empty")
         .expect("digit");
 
+    let counts_map = res.iter().filter_map(|it| *it).counts();
+
     for id_to_move in (0..=highest_id).rev() {
-        let space_needed = res.iter().filter(|it| **it == Some(id_to_move)).count();
+        let space_needed = counts_map[&id_to_move];
 
         let first_id_idx = res
             .iter()
@@ -60,7 +62,7 @@ fn reorder_whole_file(v: &[Option<usize>]) -> Vec<Option<usize>> {
 fn expand_format(s: &str) -> Vec<Option<usize>> {
     let mut res = vec![];
 
-    for (id, mut chnk) in (&s.chars().chunks(2)).into_iter().enumerate() {
+    for (id, mut chnk) in s.chars().chunks(2).into_iter().enumerate() {
         if let Some(file) = chnk.next().and_then(|it| it.to_digit(10)) {
             res.extend_from_slice(&vec![Some(id); file as usize]);
         }
@@ -71,11 +73,6 @@ fn expand_format(s: &str) -> Vec<Option<usize>> {
     }
 
     res
-}
-
-#[aoc_generator(day09)]
-pub fn generate(s: &str) -> String {
-    s.to_string()
 }
 
 #[aoc(day09, part1)]
@@ -102,15 +99,13 @@ mod tests {
 
     #[test]
     fn test_p1() {
-        let gen = generate(TEST_INPUT);
-        let res = part1(&gen);
+        let res = part1(TEST_INPUT);
         assert_eq!(res, 1928);
     }
 
     #[test]
     fn test_p2() {
-        let gen = generate(TEST_INPUT);
-        let res = part2(&gen);
+        let res = part2(TEST_INPUT);
         assert_eq!(res, 2858);
     }
 }
