@@ -11,30 +11,24 @@ pub fn generate(s: &str) -> Vec<usize> {
 }
 
 #[memoize]
-fn transform_digit(mut stone: usize, max_steps: usize) -> usize {
-    let mut result = 1;
-
-    for cur_step in 0..max_steps {
-        if stone == 0 {
-            stone = 1;
-        } else {
-            let num_digits = 1 + stone.ilog10();
-
-            if num_digits.is_even() {
-                let divisor = 10usize.pow(num_digits / 2);
-
-                let lhs = stone / divisor;
-                result += transform_digit(lhs, max_steps - cur_step - 1);
-
-                let rhs = stone % divisor;
-                stone = rhs;
-            } else {
-                stone *= 2024;
-            }
-        }
+fn transform_digit(stone: usize, max_steps: usize) -> usize {
+    if max_steps == 0 {
+        return 1;
     }
 
-    result
+    if stone == 0 {
+        return transform_digit(1, max_steps - 1);
+    }
+
+    let num_digits = 1 + stone.ilog10();
+    if num_digits.is_even() {
+        let divisor = 10usize.pow(num_digits / 2);
+
+        return transform_digit(stone / divisor, max_steps - 1)
+            + transform_digit(stone % divisor, max_steps - 1);
+    }
+
+    transform_digit(stone * 2024, max_steps - 1)
 }
 
 #[aoc(day11, part1)]
