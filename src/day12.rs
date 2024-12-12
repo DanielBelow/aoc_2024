@@ -24,12 +24,7 @@ fn succs(grid: &Matrix<char>, (r, c): (usize, usize)) -> Vec<(usize, usize)> {
 
 fn get_components(grid: &Matrix<char>) -> Vec<Vec<(usize, usize)>> {
     let nodes = grid.keys().collect_vec();
-    pathfinding::prelude::strongly_connected_components(&nodes, |&(r, c)| {
-        succs(grid, (r, c))
-            .iter()
-            .map(|(r, c)| (*r, *c))
-            .collect_vec()
-    })
+    pathfinding::prelude::strongly_connected_components(&nodes, |&(r, c)| succs(grid, (r, c)))
 }
 
 fn perimeter(grid: &Matrix<char>, comp: &[(usize, usize)]) -> usize {
@@ -59,19 +54,28 @@ fn count_corners(comp: &[(usize, usize)]) -> usize {
         .collect_vec();
 
     for &(r, c) in &comp {
+        let above = (r - 1, c);
+        let below = (r + 1, c);
+        let left = (r, c - 1);
+        let right = (r, c + 1);
+        let top_right = (r - 1, c + 1);
+        let top_left = (r - 1, c - 1);
+        let bot_right = (r + 1, c + 1);
+        let bot_left = (r + 1, c - 1);
+
         // outside corners
 
         // above is empty and left is empty
-        let top_left_corner = !comp.contains(&(r - 1, c)) && !comp.contains(&(r, c - 1));
+        let top_left_corner = !comp.contains(&above) && !comp.contains(&left);
 
         // above is empty and right is empty
-        let top_right_corner = !comp.contains(&(r - 1, c)) && !comp.contains(&(r, c + 1));
+        let top_right_corner = !comp.contains(&above) && !comp.contains(&right);
 
         // left is empty and below is empty
-        let bot_left_corner = !comp.contains(&(r, c - 1)) && !comp.contains(&(r + 1, c));
+        let bot_left_corner = !comp.contains(&left) && !comp.contains(&below);
 
         // right is empty and below is empty
-        let bot_right_corner = !comp.contains(&(r, c + 1)) && !comp.contains(&(r + 1, c));
+        let bot_right_corner = !comp.contains(&right) && !comp.contains(&below);
 
         result += usize::from(top_left_corner)
             + usize::from(top_right_corner)
@@ -81,24 +85,20 @@ fn count_corners(comp: &[(usize, usize)]) -> usize {
         // inside corners
 
         // below contained, right contained, bot-right diag not contained
-        let top_left_inside = comp.contains(&(r + 1, c))
-            && comp.contains(&(r, c + 1))
-            && !comp.contains(&(r + 1, c + 1));
+        let top_left_inside =
+            comp.contains(&below) && comp.contains(&right) && !comp.contains(&bot_right);
 
         // below contained, left contained, bot-left diag not contained
-        let top_right_inside = comp.contains(&(r + 1, c))
-            && comp.contains(&(r, c - 1))
-            && !comp.contains(&(r + 1, c - 1));
+        let top_right_inside =
+            comp.contains(&below) && comp.contains(&left) && !comp.contains(&bot_left);
 
         // above contained, right contained, top-right diag not contained
-        let bot_left_inside = comp.contains(&(r - 1, c))
-            && comp.contains(&(r, c + 1))
-            && !comp.contains(&(r - 1, c + 1));
+        let bot_left_inside =
+            comp.contains(&above) && comp.contains(&right) && !comp.contains(&top_right);
 
         // above contained, left contained, top-left diag not contained
-        let bot_right_inside = comp.contains(&(r - 1, c))
-            && comp.contains(&(r, c - 1))
-            && !comp.contains(&(r - 1, c - 1));
+        let bot_right_inside =
+            comp.contains(&above) && comp.contains(&left) && !comp.contains(&top_left);
 
         result += usize::from(top_left_inside)
             + usize::from(top_right_inside)
