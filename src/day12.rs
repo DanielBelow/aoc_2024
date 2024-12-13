@@ -1,11 +1,111 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
 use pathfinding::prelude::Matrix;
+use std::collections::HashSet;
+
+pub struct InputData {
+    grid: Matrix<char>,
+    connected_components: Vec<ConnectedComponent>,
+}
+
+pub struct ConnectedComponent {
+    nodes: HashSet<(usize, usize)>,
+}
+
+impl ConnectedComponent {
+    fn area(&self) -> usize {
+        self.nodes.len()
+    }
+
+    fn perimeter(&self, grid: &Matrix<char>) -> usize {
+        self.nodes
+            .iter()
+            .fold(0, |acc, &(r, c)| acc + 4 - succs(grid, (r, c)).len())
+    }
+
+    #[allow(clippy::cast_possible_wrap)]
+    fn count_corners(&self) -> usize {
+        let mut result = 0;
+
+        let comp = self
+            .nodes
+            .iter()
+            .map(|&(r, c)| (r as isize, c as isize))
+            .collect::<HashSet<_>>();
+
+        for &(r, c) in &comp {
+            let above = (r - 1, c);
+            let below = (r + 1, c);
+            let left = (r, c - 1);
+            let right = (r, c + 1);
+            let top_right = (r - 1, c + 1);
+            let top_left = (r - 1, c - 1);
+            let bot_right = (r + 1, c + 1);
+            let bot_left = (r + 1, c - 1);
+
+            // outside corners
+
+            // above is empty and left is empty
+            let top_left_corner = !comp.contains(&above) && !comp.contains(&left);
+
+            // above is empty and right is empty
+            let top_right_corner = !comp.contains(&above) && !comp.contains(&right);
+
+            // left is empty and below is empty
+            let bot_left_corner = !comp.contains(&left) && !comp.contains(&below);
+
+            // right is empty and below is empty
+            let bot_right_corner = !comp.contains(&right) && !comp.contains(&below);
+
+            result += usize::from(top_left_corner)
+                + usize::from(top_right_corner)
+                + usize::from(bot_left_corner)
+                + usize::from(bot_right_corner);
+
+            // inside corners
+
+            // below contained, right contained, bot-right diag not contained
+            let top_left_inside =
+                comp.contains(&below) && comp.contains(&right) && !comp.contains(&bot_right);
+
+            // below contained, left contained, bot-left diag not contained
+            let top_right_inside =
+                comp.contains(&below) && comp.contains(&left) && !comp.contains(&bot_left);
+
+            // above contained, right contained, top-right diag not contained
+            let bot_left_inside =
+                comp.contains(&above) && comp.contains(&right) && !comp.contains(&top_right);
+
+            // above contained, left contained, top-left diag not contained
+            let bot_right_inside =
+                comp.contains(&above) && comp.contains(&left) && !comp.contains(&top_left);
+
+            result += usize::from(top_left_inside)
+                + usize::from(top_right_inside)
+                + usize::from(bot_left_inside)
+                + usize::from(bot_right_inside);
+        }
+
+        result
+    }
+}
 
 #[aoc_generator(day12)]
-pub fn generate(s: &str) -> Option<Matrix<char>> {
+pub fn generate(s: &str) -> Option<InputData> {
     let v = s.lines().map(|l| l.chars().collect_vec()).collect_vec();
-    Matrix::from_rows(v).ok()
+    let grid = Matrix::from_rows(v).ok()?;
+
+    let connected_components = get_components(&grid)
+        .iter()
+        .map(|comp| ConnectedComponent {
+            nodes: comp.iter().copied().collect::<HashSet<_, _>>(),
+        })
+        .collect_vec();
+
+    Some(InputData {
+        grid,
+        connected_components,
+    })
 }
 
 fn succs(grid: &Matrix<char>, (r, c): (usize, usize)) -> Vec<(usize, usize)> {
@@ -27,99 +127,19 @@ fn get_components(grid: &Matrix<char>) -> Vec<Vec<(usize, usize)>> {
     pathfinding::prelude::strongly_connected_components(&nodes, |&(r, c)| succs(grid, (r, c)))
 }
 
-fn perimeter(grid: &Matrix<char>, comp: &[(usize, usize)]) -> usize {
-    comp.iter()
-        .fold(0, |acc, &(r, c)| acc + 4 - succs(grid, (r, c)).len())
-}
-
 #[aoc(day12, part1)]
-pub fn part1(inp: &Matrix<char>) -> usize {
-    let comps = get_components(inp);
-    let mut result = 0;
-
-    for comp in comps {
-        result += comp.len() * perimeter(inp, &comp);
-    }
-
-    result
-}
-
-#[allow(clippy::cast_possible_wrap)]
-fn count_corners(comp: &[(usize, usize)]) -> usize {
-    let mut result = 0;
-
-    let comp = comp
+pub fn part1(inp: &InputData) -> usize {
+    let grid = &inp.grid;
+    inp.connected_components
         .iter()
-        .map(|&(r, c)| (r as isize, c as isize))
-        .collect_vec();
-
-    for &(r, c) in &comp {
-        let above = (r - 1, c);
-        let below = (r + 1, c);
-        let left = (r, c - 1);
-        let right = (r, c + 1);
-        let top_right = (r - 1, c + 1);
-        let top_left = (r - 1, c - 1);
-        let bot_right = (r + 1, c + 1);
-        let bot_left = (r + 1, c - 1);
-
-        // outside corners
-
-        // above is empty and left is empty
-        let top_left_corner = !comp.contains(&above) && !comp.contains(&left);
-
-        // above is empty and right is empty
-        let top_right_corner = !comp.contains(&above) && !comp.contains(&right);
-
-        // left is empty and below is empty
-        let bot_left_corner = !comp.contains(&left) && !comp.contains(&below);
-
-        // right is empty and below is empty
-        let bot_right_corner = !comp.contains(&right) && !comp.contains(&below);
-
-        result += usize::from(top_left_corner)
-            + usize::from(top_right_corner)
-            + usize::from(bot_left_corner)
-            + usize::from(bot_right_corner);
-
-        // inside corners
-
-        // below contained, right contained, bot-right diag not contained
-        let top_left_inside =
-            comp.contains(&below) && comp.contains(&right) && !comp.contains(&bot_right);
-
-        // below contained, left contained, bot-left diag not contained
-        let top_right_inside =
-            comp.contains(&below) && comp.contains(&left) && !comp.contains(&bot_left);
-
-        // above contained, right contained, top-right diag not contained
-        let bot_left_inside =
-            comp.contains(&above) && comp.contains(&right) && !comp.contains(&top_right);
-
-        // above contained, left contained, top-left diag not contained
-        let bot_right_inside =
-            comp.contains(&above) && comp.contains(&left) && !comp.contains(&top_left);
-
-        result += usize::from(top_left_inside)
-            + usize::from(top_right_inside)
-            + usize::from(bot_left_inside)
-            + usize::from(bot_right_inside);
-    }
-
-    result
+        .fold(0, |acc, comp| acc + comp.area() * comp.perimeter(grid))
 }
 
 #[aoc(day12, part2)]
-pub fn part2(inp: &Matrix<char>) -> usize {
-    let comps = get_components(inp);
-    let mut result = 0;
-
-    for comp in comps {
-        let num_corners = count_corners(&comp);
-        result += comp.len() * num_corners;
-    }
-
-    result
+pub fn part2(inp: &InputData) -> usize {
+    inp.connected_components
+        .iter()
+        .fold(0, |acc, comp| acc + comp.area() * comp.count_corners())
 }
 
 #[cfg(test)]
