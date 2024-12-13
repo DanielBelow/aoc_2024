@@ -3,11 +3,6 @@ use itertools::Itertools;
 use pathfinding::prelude::Matrix;
 use std::collections::HashSet;
 
-pub struct InputData {
-    grid: Matrix<char>,
-    connected_components: Vec<ConnectedComponent>,
-}
-
 pub struct ConnectedComponent {
     nodes: HashSet<(usize, usize)>,
 }
@@ -17,10 +12,17 @@ impl ConnectedComponent {
         self.nodes.len()
     }
 
-    fn perimeter(&self, grid: &Matrix<char>) -> usize {
-        self.nodes
-            .iter()
-            .fold(0, |acc, &(r, c)| acc + 4 - succs(grid, (r, c)).len())
+    fn perimeter(&self) -> usize {
+        self.nodes.iter().fold(0, |acc, &(r, c)| {
+            let mut num_succs = 0;
+            for succ in [(r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)] {
+                if self.nodes.contains(&succ) {
+                    num_succs += 1;
+                }
+            }
+
+            acc + 4 - num_succs
+        })
     }
 
     #[allow(clippy::cast_possible_wrap)]
@@ -91,7 +93,7 @@ impl ConnectedComponent {
 }
 
 #[aoc_generator(day12)]
-pub fn generate(s: &str) -> Option<InputData> {
+pub fn generate(s: &str) -> Option<Vec<ConnectedComponent>> {
     let v = s.lines().map(|l| l.chars().collect_vec()).collect_vec();
     let grid = Matrix::from_rows(v).ok()?;
 
@@ -102,10 +104,7 @@ pub fn generate(s: &str) -> Option<InputData> {
         })
         .collect_vec();
 
-    Some(InputData {
-        grid,
-        connected_components,
-    })
+    Some(connected_components)
 }
 
 fn succs(grid: &Matrix<char>, (r, c): (usize, usize)) -> Vec<(usize, usize)> {
@@ -128,17 +127,14 @@ fn get_components(grid: &Matrix<char>) -> Vec<Vec<(usize, usize)>> {
 }
 
 #[aoc(day12, part1)]
-pub fn part1(inp: &InputData) -> usize {
-    let grid = &inp.grid;
-    inp.connected_components
-        .iter()
-        .fold(0, |acc, comp| acc + comp.area() * comp.perimeter(grid))
+pub fn part1(inp: &[ConnectedComponent]) -> usize {
+    inp.iter()
+        .fold(0, |acc, comp| acc + comp.area() * comp.perimeter())
 }
 
 #[aoc(day12, part2)]
-pub fn part2(inp: &InputData) -> usize {
-    inp.connected_components
-        .iter()
+pub fn part2(inp: &[ConnectedComponent]) -> usize {
+    inp.iter()
         .fold(0, |acc, comp| acc + comp.area() * comp.count_corners())
 }
 
