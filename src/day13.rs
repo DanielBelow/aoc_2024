@@ -1,24 +1,23 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
 use parse_display_derive::{Display, FromStr};
-use z3::ast::Ast;
 
-const BUTTON_A_COST: u64 = 3;
-const BUTTON_B_COST: u64 = 1;
+const BUTTON_A_COST: usize = 3;
+const BUTTON_B_COST: usize = 1;
 
 #[derive(Display, FromStr, Clone, Debug)]
 #[display("Button {name}: X+{x_offset}, Y+{y_offset}")]
 pub struct Button {
     name: String,
-    x_offset: u64,
-    y_offset: u64,
+    x_offset: f64,
+    y_offset: f64,
 }
 
 #[derive(Display, FromStr, Copy, Clone, Debug)]
 #[display("Prize: X={x}, Y={y}")]
 pub struct Prize {
-    x: u64,
-    y: u64,
+    x: f64,
+    y: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -52,69 +51,82 @@ pub fn generate_p2(s: &str) -> Vec<InputData> {
     let mut parsed = generate_p1(s);
 
     for input in &mut parsed {
-        input.prize.x += 10_000_000_000_000;
-        input.prize.y += 10_000_000_000_000;
+        input.prize.x += 10_000_000_000_000.0;
+        input.prize.y += 10_000_000_000_000.0;
     }
 
     parsed
 }
 
-fn solve_constraints(input: &InputData, ctx: &z3::Context) -> Option<u64> {
-    let optimizer = z3::Optimize::new(ctx);
+// solve linear equations
 
-    let a_cost = z3::ast::Int::from_u64(ctx, BUTTON_A_COST);
-    let b_cost = z3::ast::Int::from_u64(ctx, BUTTON_B_COST);
+// ax * i + bx * j = px
+// ay * i + by * j = py
 
-    let prize_x = z3::ast::Int::from_u64(ctx, input.prize.x);
-    let prize_y = z3::ast::Int::from_u64(ctx, input.prize.y);
+// (1) * by, (2) * bx
 
-    let b_a_x = z3::ast::Int::from_u64(ctx, input.button_a.x_offset);
-    let b_b_x = z3::ast::Int::from_u64(ctx, input.button_b.x_offset);
+// ax * by * i + bx * by * j = px * by
+// ay * bx * i + bx * by * j = py * bx
 
-    let b_a_y = z3::ast::Int::from_u64(ctx, input.button_a.y_offset);
-    let b_b_y = z3::ast::Int::from_u64(ctx, input.button_b.y_offset);
+// subtract
+// ax * by * i - ay * bx * i = px * by - py * bx
 
-    let num_a = z3::ast::Int::new_const(ctx, "num_a");
-    let num_b = z3::ast::Int::new_const(ctx, "num_b");
+// factor out i
+// i * (ax * by - ay * bx) = px * by - py * bx
 
-    let final_x_pos = num_a.clone() * b_a_x + num_b.clone() * b_b_x;
-    let final_y_pos = num_a.clone() * b_a_y + num_b.clone() * b_b_y;
-    optimizer.assert(&final_x_pos._eq(&prize_x));
-    optimizer.assert(&final_y_pos._eq(&prize_y));
+// divide
+// i = (px * by - py * bx) / (ax * by - ay * bx)
 
-    let total_cost = num_a.clone() * a_cost + num_b.clone() * b_cost;
-    optimizer.minimize(&total_cost);
+// ax * i + bx * j = px
 
-    optimizer.check(&[]);
+// subtract ax * i
+// bx * j = px - ax * i
 
-    let model = optimizer.get_model()?;
+// divide by bx
+// j = (px - ax * i) / bx
 
-    let a_presses = model
-        .eval(&num_a, true)
-        .and_then(|i| i.as_u64())
-        .expect("solution");
-    let b_presses = model
-        .eval(&num_b, true)
-        .and_then(|i| i.as_u64())
-        .expect("solution");
+fn calculate_num_presses(input: &InputData) -> (usize, usize) {
+    let Prize { x: px, y: py } = input.prize;
 
-    Some(a_presses * BUTTON_A_COST + b_presses * BUTTON_B_COST)
+    let Button {
+        x_offset: ax,
+        y_offset: ay,
+        ..
+    } = &input.button_a;
+
+    let Button {
+        x_offset: bx,
+        y_offset: by,
+        ..
+    } = &input.button_b;
+
+    // i = (px * by - py * bx) / (ax * by - ay * bx)
+    let a_presses = (px * by - py * bx) / (ax * by - ay * bx);
+
+    if a_presses.fract() != 0.0 {
+        return (0, 0);
+    }
+
+    // j = (px - ax * i) / bx
+    let b_presses = (px - ax * a_presses) / bx;
+
+    (a_presses as usize, b_presses as usize)
 }
 
 #[aoc(day13, part1)]
-pub fn part1(inp: &[InputData]) -> u64 {
-    let cfg = z3::Config::new();
-    let ctx = z3::Context::new(&cfg);
-
-    inp.iter().filter_map(|i| solve_constraints(i, &ctx)).sum()
+pub fn part1(inp: &[InputData]) -> usize {
+    inp.iter().fold(0usize, |acc, input| {
+        let (a_presses, b_presses) = calculate_num_presses(input);
+        acc + a_presses * BUTTON_A_COST + b_presses * BUTTON_B_COST
+    })
 }
 
 #[aoc(day13, part2)]
-pub fn part2(inp: &[InputData]) -> u64 {
-    let cfg = z3::Config::new();
-    let ctx = z3::Context::new(&cfg);
-
-    inp.iter().filter_map(|i| solve_constraints(i, &ctx)).sum()
+pub fn part2(inp: &[InputData]) -> usize {
+    inp.iter().fold(0usize, |acc, input| {
+        let (a_presses, b_presses) = calculate_num_presses(input);
+        acc + a_presses * BUTTON_A_COST + b_presses * BUTTON_B_COST
+    })
 }
 
 #[cfg(test)]
