@@ -49,17 +49,14 @@ pub fn generate_p1(s: &str) -> Vec<InputData> {
 
 #[aoc_generator(day13, part2)]
 pub fn generate_p2(s: &str) -> Vec<InputData> {
-    generate_p1(s)
-        .iter()
-        .map(|i| InputData {
-            button_a: i.button_a.clone(),
-            button_b: i.button_b.clone(),
-            prize: Prize {
-                x: i.prize.x + 10_000_000_000_000,
-                y: i.prize.y + 10_000_000_000_000,
-            },
-        })
-        .collect_vec()
+    let mut parsed = generate_p1(s);
+
+    for input in &mut parsed {
+        input.prize.x += 10_000_000_000_000;
+        input.prize.y += 10_000_000_000_000;
+    }
+
+    parsed
 }
 
 fn solve_constraints(input: &InputData, ctx: &z3::Context) -> Option<u64> {
