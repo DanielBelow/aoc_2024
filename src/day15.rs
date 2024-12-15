@@ -22,39 +22,25 @@ pub fn generate_p1(s: &str) -> Option<Input> {
 #[aoc_generator(day15, part2)]
 pub fn generate_p2(s: &str) -> Option<Input> {
     let (map, movements) = s.split_once("\n\n")?;
-    let v = map.lines().map(|l| l.chars().collect_vec()).collect_vec();
+    let v = map
+        .lines()
+        .map(|l| {
+            l.chars()
+                .flat_map(|c| match c {
+                    'O' => ['[', ']'],
+                    '@' => ['@', '.'],
+                    '#' => ['#', '#'],
+                    '.' => ['.', '.'],
+                    _ => panic!("unexpected char: {c}"),
+                })
+                .collect_vec()
+        })
+        .collect_vec();
     let grid = Matrix::from_rows(v).ok()?;
-
-    let mut wide_grid = Matrix::new(grid.rows, grid.columns * 2, '.');
-
-    for pos in grid.keys() {
-        match grid[pos] {
-            '.' => {
-                wide_grid[(pos.0, pos.1 * 2)] = '.';
-                wide_grid[(pos.0, pos.1 * 2 + 1)] = '.';
-            }
-            'O' => {
-                wide_grid[(pos.0, pos.1 * 2)] = '[';
-                wide_grid[(pos.0, pos.1 * 2 + 1)] = ']';
-            }
-            '@' => {
-                wide_grid[(pos.0, pos.1 * 2)] = '@';
-                wide_grid[(pos.0, pos.1 * 2 + 1)] = '.';
-            }
-            '#' => {
-                wide_grid[(pos.0, pos.1 * 2)] = '#';
-                wide_grid[(pos.0, pos.1 * 2 + 1)] = '#';
-            }
-            _ => panic!("invalid tile: {}", grid[pos]),
-        };
-    }
 
     let insts = movements.lines().join("").chars().collect_vec();
 
-    Some(Input {
-        grid: wide_grid,
-        insts,
-    })
+    Some(Input { grid, insts })
 }
 
 fn find_start_pos(grid: &Matrix<char>) -> Option<(usize, usize)> {
@@ -222,7 +208,7 @@ fn can_move_vertically((br, bc): (usize, usize), row_dir: isize, grid: &Matrix<c
     assert_ne!(row_dir, 0);
     assert_eq!(grid[(br, bc)], '[');
     assert_eq!(grid[(br, bc + 1)], ']');
-    
+
     let next_br = (br as isize + row_dir) as usize;
     if grid[(next_br, bc)] == '.' && grid[(next_br, bc + 1)] == '.' {
         return true;
@@ -242,7 +228,7 @@ fn can_move_vertically((br, bc): (usize, usize), row_dir: isize, grid: &Matrix<c
     if above_bc_left == ']' && !can_move_vertically((next_br, bc - 1), row_dir, grid) {
         return false;
     }
-    
+
     if above_bc_right == '[' && !can_move_vertically((next_br, bc + 1), row_dir, grid) {
         return false;
     }
@@ -366,7 +352,7 @@ mod tests {
 
         assert!(can_move_vertically((1, 2), 1, &grid));
     }
-    
+
     #[test]
     fn test_can_move_2() {
         let txt = "......\n\
@@ -378,7 +364,7 @@ mod tests {
 
         assert!(can_move_vertically((2, 2), -1, &grid));
     }
-    
+
     #[test]
     fn test_can_move_3() {
         let txt = ".......\n\
