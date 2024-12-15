@@ -12,11 +12,18 @@ impl ConnectedComponent {
         self.nodes.len()
     }
 
+    #[allow(clippy::cast_possible_wrap)]
     fn perimeter(&self) -> usize {
         self.nodes.iter().fold(0, |acc, &(r, c)| {
             let mut num_succs = 0;
-            for succ in [(r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)] {
-                if self.nodes.contains(&succ) {
+            let r = r as isize;
+            let c = c as isize;
+            for (sr, sc) in [(r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)] {
+                if sr < 0 || sc < 0 {
+                    continue;
+                }
+
+                if self.nodes.contains(&(sr as usize, sc as usize)) {
                     num_succs += 1;
                 }
             }
