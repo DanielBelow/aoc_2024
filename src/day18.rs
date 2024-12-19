@@ -59,28 +59,18 @@ fn find_first_blocking(
     end: Coord,
     to_skip: usize,
     coords: &[Coord],
-    grid: &mut Matrix<char>,
-) -> Option<Coord> {
-    // fill initial state
-    bytes_fall(to_skip, coords, grid);
+    grid: &Matrix<char>,
+) -> Coord {
+    let indices = (to_skip..coords.len()).collect_vec();
 
-    let (mut path, _) = find_path(grid, start, end).expect("path exists");
+    let idx = indices.partition_point(|&idx| {
+        let mut grid = grid.clone();
+        bytes_fall(idx, coords, &mut grid);
 
-    for &coord in &coords[to_skip..] {
-        grid[(coord.row, coord.col)] = '#';
+        find_path(&grid, start, end).is_some()
+    });
 
-        if !path.contains(&coord) {
-            // definitely not blocking our path
-            continue;
-        }
-
-        match find_path(grid, start, end) {
-            None => return Some(coord),
-            Some((new_path, _)) => path = new_path,
-        };
-    }
-
-    None
+    coords[to_skip + idx - 1]
 }
 
 #[aoc(day18, part1)]
@@ -101,9 +91,9 @@ pub fn part2(inp: &[Coord]) -> String {
     const END: Coord = Coord { row: 70, col: 70 };
     const TO_SKIP: usize = 1024; // known from p1 to still have a valid path
 
-    let mut grid = build_grid(71, 71);
+    let grid = build_grid(71, 71);
 
-    let coord = find_first_blocking(START, END, TO_SKIP, inp, &mut grid).expect("path was blocked");
+    let coord = find_first_blocking(START, END, TO_SKIP, inp, &grid);
     format!("{},{}", coord.col, coord.row)
 }
 
@@ -155,9 +145,8 @@ mod tests {
         const TO_SKIP: usize = 12;
 
         let gen = generate(TEST_INPUT);
-        let mut grid = build_grid(7, 7);
-        let coord =
-            find_first_blocking(START, END, TO_SKIP, &gen, &mut grid).expect("path was blocked");
+        let grid = build_grid(7, 7);
+        let coord = find_first_blocking(START, END, TO_SKIP, &gen, &grid);
         assert_eq!(coord, Coord { row: 1, col: 6 });
     }
 }
